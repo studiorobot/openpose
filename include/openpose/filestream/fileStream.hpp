@@ -50,6 +50,10 @@ namespace op
         const std::vector<std::vector<std::array<float,3>>>& candidates, const std::string& fileName,
         const bool humanReadable);
 
+    OP_API void savePeopleTxt(
+        const std::vector<std::pair<Array<float>, std::string>>& keypointVector
+    );
+
     // Save/load image
     OP_API void saveImage(
         const Matrix& matrix, const std::string& fullFilePath,

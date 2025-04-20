@@ -1,5 +1,6 @@
 #include <openpose/filestream/peopleJsonSaver.hpp>
 #include <openpose/filestream/fileStream.hpp>
+#include <iostream>
 
 namespace op
 {
@@ -21,7 +22,8 @@ namespace op
         {
             // Record json
             const auto finalFileName = getNextFileName(fileName) + ".json";
-            savePeopleJson(keypointVector, candidates, finalFileName, humanReadable);
+            // savePeopleJson(keypointVector, candidates, finalFileName, humanReadable);
+            savePeopleTxt(keypointVector);
         }
         catch (const std::exception& e)
         {

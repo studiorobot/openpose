@@ -1,17 +1,87 @@
-// ------------------------------------------------ OpenPose C++ Demo ------------------------------------------------
-// This example summarizes all the functionality of the OpenPose library. It can...
-    // 1. Read a frames source (images, video, webcam, 3D stereo Flir cameras, etc.).
-    // 2. Extract and render body/hand/face/foot keypoint/heatmap/PAF of that image.
-    // 3. Save the results on disk.
-    // 4. Display the rendered pose.
-// For more details on the OpenPose examples, see
-// - https://cmu-perceptual-computing-lab.github.io/openpose
-// - https://github.com/CMU-Perceptual-Computing-Lab/openpose/blob/master/doc/00_index.md
+// ------------------------- OpenPose C++ API Tutorial - Example 13 - Custom Input -------------------------
+// Synchronous mode: ideal for production integration. It provides the fastest results with respect to runtime
+// performance.
+// In this function, the user can implement its own way to create frames (e.g., reading his own folder of images).
 
+// Third-party dependencies
+#include <opencv2/opencv.hpp>
 // Command-line user interface
+#define OPENPOSE_FLAGS_DISABLE_PRODUCER
 #include <openpose/flags.hpp>
 // OpenPose dependencies
 #include <openpose/headers.hpp>
+
+// Custom OpenPose flags
+// Producer
+DEFINE_string(image_dir,                "examples/media/",
+    "Process a directory of images. Read all standard formats (jpg, png, bmp, etc.).");
+
+// This worker will just read and return all the basic image file formats in a directory
+class WUserInput : public op::WorkerProducer<std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>>>
+{
+public:
+    WUserInput(const std::string& directoryPath) :
+        mImageFiles{op::getFilesOnDirectory(directoryPath, op::Extensions::Images)}, // For all basic image formats
+        // If we want only e.g., "jpg" + "png" images
+        // mImageFiles{op::getFilesOnDirectory(directoryPath, std::vector<std::string>{"jpg", "png"})},
+        mCounter{0}
+    {
+        if (mImageFiles.empty())
+            op::error("No images found on: " + directoryPath, __LINE__, __FUNCTION__, __FILE__);
+    }
+
+    void initializationOnThread() {}
+
+    std::shared_ptr<std::vector<std::shared_ptr<op::Datum>>> workProducer()
+    {
+        try
+        {
+            // Close program when empty frame
+            if (mImageFiles.size() <= mCounter)
+            {
+                op::opLog("Last frame read and added to queue. Closing program after it is processed.",
+                        op::Priority::High);
+                // This function stops this worker, which will eventually stop the whole thread system once all the
+                // frames have been processed
+                this->stop();
+                return nullptr;
+            }
+            else
+            {
+                // Create new datum
+                auto datumsPtr = std::make_shared<std::vector<std::shared_ptr<op::Datum>>>();
+                datumsPtr->emplace_back();
+                auto& datumPtr = datumsPtr->at(0);
+                datumPtr = std::make_shared<op::Datum>();
+
+                // Fill datum
+                const cv::Mat cvInputData = cv::imread(mImageFiles.at(mCounter++));
+                datumPtr->cvInputData = OP_CV2OPCONSTMAT(cvInputData);
+
+                // If empty frame -> return nullptr
+                if (datumPtr->cvInputData.empty())
+                {
+                    op::opLog("Empty frame detected on path: " + mImageFiles.at(mCounter-1) + ". Closing program.",
+                        op::Priority::High);
+                    this->stop();
+                    datumsPtr = nullptr;
+                }
+
+                return datumsPtr;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            this->stop();
+            op::error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            return nullptr;
+        }
+    }
+
+private:
+    const std::vector<std::string> mImageFiles;
+    unsigned long long mCounter;
+};
 
 void configureWrapper(op::Wrapper& opWrapper)
 {
@@ -27,14 +97,6 @@ void configureWrapper(op::Wrapper& opWrapper)
         op::Profiler::setDefaultX(FLAGS_profile_speed);
 
         // Applying user defined configuration - GFlags to program variables
-        // producerType
-        op::ProducerType producerType;
-        op::String producerString;
-        std::tie(producerType, producerString) = op::flagsToProducer(
-            op::String(FLAGS_image_dir), op::String(FLAGS_video), op::String(FLAGS_ip_camera), FLAGS_camera,
-            FLAGS_flir_camera, FLAGS_flir_camera_index);
-        // cameraSize
-        const auto cameraSize = op::flagsToPoint(op::String(FLAGS_camera_resolution), "-1x-1");
         // outputSize
         const auto outputSize = op::flagsToPoint(op::String(FLAGS_output_resolution), "-1x-1");
         // netInputSize
@@ -59,12 +121,20 @@ void configureWrapper(op::Wrapper& opWrapper)
                                                       FLAGS_heatmaps_add_PAFs);
         const auto heatMapScaleMode = op::flagsToHeatMapScaleMode(FLAGS_heatmaps_scale);
         // >1 camera view?
-        const auto multipleView = (FLAGS_3d || FLAGS_3d_views > 1 || FLAGS_flir_camera);
+        // const auto multipleView = (FLAGS_3d || FLAGS_3d_views > 1 || FLAGS_flir_camera);
+        const auto multipleView = false;
         // Face and hand detectors
         const auto faceDetector = op::flagsToDetector(FLAGS_face_detector);
         const auto handDetector = op::flagsToDetector(FLAGS_hand_detector);
         // Enabling Google Logging
         const bool enableGoogleLogging = true;
+
+        // Initializing the user custom classes
+        // Frames producer (e.g., video, webcam, ...)
+        auto wUserInput = std::make_shared<WUserInput>(FLAGS_image_dir);
+        // Add custom processing
+        const auto workerInputOnNewThread = true;
+        opWrapper.setWorker(op::WorkerType::Input, wUserInput, workerInputOnNewThread);
 
         // Pose configuration (use WrapperStructPose{} for default and recommended configuration)
         const op::WrapperStructPose wrapperStructPose{
@@ -92,12 +162,6 @@ void configureWrapper(op::Wrapper& opWrapper)
         const op::WrapperStructExtra wrapperStructExtra{
             FLAGS_3d, FLAGS_3d_min_views, FLAGS_identification, FLAGS_tracking, FLAGS_ik_threads};
         opWrapper.configure(wrapperStructExtra);
-        // Producer (use default to disable any input)
-        const op::WrapperStructInput wrapperStructInput{
-            producerType, producerString, FLAGS_frame_first, FLAGS_frame_step, FLAGS_frame_last,
-            FLAGS_process_real_time, FLAGS_frame_flip, FLAGS_frame_rotate, FLAGS_frames_repeat,
-            cameraSize, op::String(FLAGS_camera_parameter_path), FLAGS_frame_undistort, FLAGS_3d_views};
-        opWrapper.configure(wrapperStructInput);
         // Output (comment or use default argument to disable any output)
         const op::WrapperStructOutput wrapperStructOutput{
             FLAGS_cli_verbose, op::String(FLAGS_write_keypoint), op::stringToDataFormat(FLAGS_write_keypoint_format),
@@ -122,21 +186,17 @@ void configureWrapper(op::Wrapper& opWrapper)
     }
 }
 
-int openPoseDemo()
+int tutorialApiCpp()
 {
     try
     {
         op::opLog("Starting OpenPose demo...", op::Priority::High);
         const auto opTimer = op::getTimerInit();
 
-        // Configure OpenPose
+        // OpenPose wrapper
         op::opLog("Configuring OpenPose...", op::Priority::High);
         op::Wrapper opWrapper;
         configureWrapper(opWrapper);
-
-        std::ofstream ofs;
-        ofs.open("/mnt/shared_drive/openpose/json/test.txt", std::ofstream::out | std::ofstream::trunc);
-        ofs.close();
 
         // Start, run, and stop processing - exec() blocks this thread until OpenPose wrapper has finished
         op::opLog("Starting thread(s)...", op::Priority::High);
@@ -145,7 +205,7 @@ int openPoseDemo()
         // Measuring total time
         op::printTime(opTimer, "OpenPose demo successfully finished. Total time: ", " seconds.", op::Priority::High);
 
-        // Return successful message
+        // Return
         return 0;
     }
     catch (const std::exception&)
@@ -159,6 +219,6 @@ int main(int argc, char *argv[])
     // Parsing command line flags
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-    // Running openPoseDemo
-    return openPoseDemo();
+    // Running tutorialApiCpp
+    return tutorialApiCpp();
 }
