@@ -208,6 +208,8 @@ endif (APPLE)
 # endif (CUDA_FOUND AND OpenCL_FOUND)
 set_property(CACHE GPU_MODE PROPERTY STRINGS CUDA OPENCL CPU_ONLY)
 
+find_package(realsense2 REQUIRED)
+
 # Look for CUDA
 set(CUDA_FOUND FALSE)
 if (${GPU_MODE} MATCHES "CUDA")
@@ -847,7 +849,11 @@ include_directories(
   ${Protobuf_INCLUDE_DIRS}
   ${GFLAGS_INCLUDE_DIR}
   ${GLOG_INCLUDE_DIR}
-  ${OpenCV_INCLUDE_DIRS})
+  ${OpenCV_INCLUDE_DIRS}
+  )
+
+link_libraries(${realsense2_LIBRARY})
+# link_directories("/usr/local/lib")
 
 if (USE_ASIO)
   include_directories(${CMAKE_SOURCE_DIR}/3rdparty/asio/include/)

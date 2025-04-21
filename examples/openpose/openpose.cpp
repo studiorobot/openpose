@@ -134,6 +134,7 @@ int openPoseDemo()
         op::Wrapper opWrapper;
         configureWrapper(opWrapper);
 
+        op::opLog("TESTING", op::Priority::High);
         std::ofstream ofs;
         ofs.open("/mnt/shared_drive/openpose/json/test.txt", std::ofstream::out | std::ofstream::trunc);
         ofs.close();
