@@ -50,20 +50,7 @@ try:
         color = frames.get_color_frame()
         if not depth: continue
 
-        # # Print a simple text-based representation of the image, by breaking it into 10x20 pixel regions and approximating the coverage of pixels within one meter
-        # coverage = [0]*64
-        # for y in range(480):
-        #     for x in range(640):
-        #         dist = depth.get_distance(x, y)
-        #         if 0 < dist and dist < 1:
-        #             coverage[x//10] += 1
-            
-        #     if y%20 is 19:
-        #         line = ""
-        #         for c in coverage:
-        #             line += " .:nhBXWW"[c//25]
-        #         coverage = [0]*64
-        #         print(line)
+        
 
         # Create alignment primitive with color as its target stream:
         align = rs.align(rs.stream.color)
@@ -74,15 +61,69 @@ try:
         depth = np.asanyarray(aligned_depth_frame.get_data())
         depth_scale = profile.get_device().first_depth_sensor().get_depth_scale()
         depth = depth * depth_scale
-        print("DEPTH", depth)
+        print("DEPTH", depth.shape, np.mean(depth))
 
+        # Load last line from file
+        with open('json/test.txt', 'r') as file:
+            last_line = file.readlines()[-1].strip()
+
+        # Convert to float array
+        values = np.array(list(map(float, last_line.split(','))))
+
+        # Reshape to (num_joints, 3)
+        joints = values.reshape(-1, 3)
+
+        # Scale to pixel coordinates
+        x_coords = (joints[:, 0] * width).astype(int)
+        y_coords = (joints[:, 1] * height).astype(int)
+
+        # Get depth values (assumes depth is a 2D NumPy array)
+        depths = depth[x_coords, y_coords]
+
+        # Stack final output and format to string
+        output_array = np.stack([x_coords, y_coords, depths], axis=1)
+        new_line = ','.join(map(str, output_array.flatten()))
+
+        # # read x y positions for all joints in order from json
+        # lineLast = None
+        # with open('json/test.txt', 'r') as file:
+        #     lines = file.readlines()
+        #     linelast = lines[-1]
+
+        # values = linelast.strip().split(',')
+        # new_line = ""
+        # curr_height = curr_width = None
+        # for index, value in enumerate(values):
+        #     # counter = 0
+        #     if index % 3 == 0: #even
+        #         curr_width = value
+        #     elif index % 3 == 1: #odd
+        #         curr_height = value
+        #     else: 
+        #         pixel_x = int(width*float(curr_width))
+        #         pixel_y = int(height*float(curr_height))
+                
+        #         # print("curr width height", float(curr_width), " ", curr_height)
+        #         curr_depth = depth[pixel_x][pixel_y]
+        #         # counter+=1
+        #         new_line = new_line.join([str(pixel_x), " ", str(pixel_y), " ", str(curr_depth)])
+        #         # print(index, "NEWLINE: ", new_line, "\n")
+            
+        # write new line to output
+        # with open("output.txt", "a") as file:
+        #     file.write(new_line)
+        print("HELLOOOOOOOOOOOOO")
+        f = open("output.txt", "a")
+        # f.write("Now the file has more content!")
+        f.write(new_line + '\n')
+        f.close()
 
         if not color:
             print("NO COLOR")
             continue
         frame = np.asanyarray(color.get_data())
         try:
-            print(" hELLO ")
+            print("writing ffmpeg")
             ffmpeg_proc.stdin.write(frame.tobytes())
         except BrokenPipeError:
             print("FFmpeg pipe broken.")
