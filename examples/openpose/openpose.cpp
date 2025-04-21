@@ -138,6 +138,8 @@ int openPoseDemo()
         std::ofstream ofs;
         ofs.open("/mnt/shared_drive/openpose/json/test.txt", std::ofstream::out | std::ofstream::trunc);
         ofs.close();
+        ofs.open("/mnt/shared_drive/openpose/output.txt", std::ofstream::out | std::ofstream::trunc);
+        ofs.close();
 
         // Start, run, and stop processing - exec() blocks this thread until OpenPose wrapper has finished
         op::opLog("Starting thread(s)...", op::Priority::High);
