@@ -137,6 +137,8 @@ int openPoseDemo()
         op::opLog("TESTING", op::Priority::High);
         std::ofstream ofs;
         ofs.open("/mnt/shared_drive/openpose/json/test.txt", std::ofstream::out | std::ofstream::trunc);
+        std::string null_data = "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0";
+        ofs.write(null_data.c_str(), null_data.size());
         ofs.close();
         ofs.open("/mnt/shared_drive/openpose/output.txt", std::ofstream::out | std::ofstream::trunc);
         ofs.close();

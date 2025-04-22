@@ -390,7 +390,7 @@ namespace op
                     myFile << keypointVector[1].first[i] << ", "; // x y confidence
                     if (i % 3 == 0) {
                         joint_locations[i] = std::make_pair(keypointVector[1].first[i], keypointVector[1].first[i+1]); //width, height pairs
-                        std::cout << "Joints: " << joint_locations[i].first << ", " << joint_locations[i].second << std::endl;
+                        // std::cout << "Joints: " << joint_locations[i].first << ", " << joint_locations[i].second << std::endl;
                     }
                 }
                 myFile << keypointVector[1].first[keypointVector[1].first.getVolume() - 1] << std::endl;

@@ -451,6 +451,7 @@ namespace op
                     std::shared_ptr<WebcamReader> webcamReader;
                     for (auto index = 0 ; index < 10 ; index++)
                     {
+                        opLog("camera parameter path is: " + producerString);
                         webcamReader = std::make_shared<WebcamReader>(
                             index, cameraResolutionFinal, throwExceptionIfNoOpened, cameraParameterPath,
                             undistortImage);

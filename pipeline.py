@@ -17,7 +17,7 @@ try:
 
 
     # Use v4l2loopback device (adjust if necessary)
-    virtual_cam = '/dev/video0'
+    virtual_cam = '/dev/video1'
     width, height, fps = 640, 480, 30
 
     ffmpeg_cmd = [
@@ -74,10 +74,12 @@ try:
         joints = values.reshape(-1, 3)
 
         # Scale to pixel coordinates
-        x_coords = (joints[:, 0] * width).astype(int)
-        y_coords = (joints[:, 1] * height).astype(int)
+        x_coords = (np.floor(joints[:, 0] * height)).astype(int)
+        y_coords = (np.floor(joints[:, 1] * width)).astype(int)
 
         # Get depth values (assumes depth is a 2D NumPy array)
+        print(joints[:, 0])
+        print(x_coords, y_coords)
         depths = depth[x_coords, y_coords]
 
         # Stack final output and format to string
@@ -112,7 +114,8 @@ try:
         # write new line to output
         # with open("output.txt", "a") as file:
         #     file.write(new_line)
-        print("HELLOOOOOOOOOOOOO")
+        # print("HELLOOOOOOOOOOOOO")
+
         f = open("output.txt", "a")
         # f.write("Now the file has more content!")
         f.write(new_line + '\n')
