@@ -3,6 +3,10 @@
 // performance.
 // In this function, the user can implement its own way to create frames (e.g., reading his own folder of images).
 
+// TODO: 
+// Modify WUserInput and add your custom code there. Your code should fill Datum::name, Datum::cameraMatrix, Datum::cvInputData, 
+// and Datum::cvOutputData (fill cvOutputData = cvInputData).
+
 // Third-party dependencies
 #include <opencv2/opencv.hpp>
 // Command-line user interface

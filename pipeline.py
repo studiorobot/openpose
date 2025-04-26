@@ -19,6 +19,7 @@ try:
     # Use v4l2loopback device (adjust if necessary)
     virtual_cam = '/dev/video1'
     width, height, fps = 640, 480, 30
+    conversion = 0.001 # meters per pixel
 
     ffmpeg_cmd = [
         'ffmpeg',
@@ -72,15 +73,19 @@ try:
 
         # Reshape to (num_joints, 3)
         joints = values.reshape(-1, 3)
+        joints.clip(min=0, max=1)
 
         # Scale to pixel coordinates
-        x_coords = (np.floor(joints[:, 0] * height)).astype(int)
-        y_coords = (np.floor(joints[:, 1] * width)).astype(int)
+        print("BEFORE SCALING", joints[:,0], joints[:,1]) #TODO: ERROR SOMEHOW GETTING VALUE > 1
+        x_pixel = (np.floor(joints[:, 0] * height)).astype(int).clip(max=width)
+        y_pixel = (np.floor(joints[:, 1] * width)).astype(int).clip(max=height)
+
+        x_coords = x_pixel * conversion
+        y_coords = y_pixel * conversion
 
         # Get depth values (assumes depth is a 2D NumPy array)
-        print(joints[:, 0])
-        print(x_coords, y_coords)
-        depths = depth[x_coords, y_coords]
+        print("REAL WORLD X Y", x_coords, y_coords)
+        depths = depth[x_pixel, y_pixel]
 
         # Stack final output and format to string
         output_array = np.stack([x_coords, y_coords, depths], axis=1)
